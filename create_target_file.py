@@ -14,5 +14,4 @@ for log_count in tpm_counts['logMaxTPM'].values:
 tpm_counts['target'] = true_targets
 tpm_counts = tpm_counts[['gene_id', 'target']]
 tpm_counts.to_csv(path_or_buf='tpm_counts/arabidopsis_targets.csv', index=False)
-
 print(tpm_counts.head())

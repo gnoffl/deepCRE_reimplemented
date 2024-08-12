@@ -1,3 +1,4 @@
+import datetime
 import os.path
 from typing import Any
 import pickle
@@ -372,12 +373,7 @@ def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosom
     shap_hypothetical_scores = np.concatenate(shap_hypothetical_scores, axis=0)
     one_hots_seqs = np.concatenate(one_hots_seqs, axis=0)
 
-    h = h5py.File(name=f'results/shap/{output_name}_shap_scores.h5', mode='w')
-    h.create_dataset(name='contrib_scores', data=shap_actual_scores)
-    pd.DataFrame({'gene_ids': gene_ids_seqs,
-                  'preds': preds_seqs}).to_csv(path_or_buf=f'results/shap/{output_name}_shap_meta.csv', index=False)
-    h.close()
-    return shap_actual_scores, shap_hypothetical_scores, one_hots_seqs
+    return shap_actual_scores, shap_hypothetical_scores, one_hots_seqs, gene_ids_seqs, preds_seqs
 
 
 # 2. MoDisco
@@ -422,15 +418,19 @@ def modisco_run(contribution_scores, hypothetical_scores, one_hots, output_name)
 def generate_motifs(genome, annot, tpm_targets, upstream, downstream, ignore_small_genes,
                     output_name, model_case, n_chromosomes):
 
-    actual_scores, hypothetical_scores, one_hots = extract_scores(genome=genome, annot=annot,
-                                                                  tpm_targets=tpm_targets,
-                                                                  upstream=upstream, downstream=downstream,
-                                                                  n_chromosome=n_chromosomes,
-                                                                  ignore_small_genes=ignore_small_genes,
-                                                                  output_name=output_name,
-                                                                  model_case=model_case)
+    actual_scores, hypothetical_scores, one_hots, _, _ = extract_scores(genome=genome, annot=annot,
+                                                                        tpm_targets=tpm_targets,
+                                                                        upstream=upstream, downstream=downstream,
+                                                                        n_chromosome=n_chromosomes,
+                                                                        ignore_small_genes=ignore_small_genes,
+                                                                        output_name=output_name,
+                                                                        model_case=model_case)
 
     print("Now running MoDisco --------------------------------------------------\n")
     print(f"Species: {output_name} \n")
     modisco_run(contribution_scores=actual_scores, hypothetical_scores=hypothetical_scores,
                 one_hots=one_hots, output_name=output_name)
+
+
+def get_time_stamp() -> str:
+    return datetime.datetime.now().strftime("%y%m%d_%H%M%S")

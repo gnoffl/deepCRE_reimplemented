@@ -93,7 +93,7 @@ def main():
     if data.shape[1] != 5:
         raise Exception("Input file incorrect. Your input file must contain 5 columns and must be .csv")
 
-    folder_name = os.path.join('results' 'predictions')
+    folder_name = os.path.join('results', 'predictions')
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
     file_name = get_filename_from_path(__file__)

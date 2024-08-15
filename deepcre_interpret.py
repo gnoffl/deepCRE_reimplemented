@@ -113,7 +113,7 @@ def save_results(output_name: str, shap_actual_scores, shap_hypothetical_scores,
         h5_file.create_dataset(name='contrib_scores', data=shap_actual_scores)
         h5_file.create_dataset(name="hypothetical_contrib_scores", data=shap_hypothetical_scores)
         pd.DataFrame({'gene_ids': gene_ids_seqs,
-                    'preds': preds_seqs}).to_csv(path_or_buf=f'results/shap/{output_name}_shap_meta.csv', index=False)
+                    'preds': preds_seqs}).to_csv(path_or_buf=f'results/shap/{output_name}_{file_name}_{get_time_stamp()}_shap_meta.csv', index=False)
 
 
 def main():

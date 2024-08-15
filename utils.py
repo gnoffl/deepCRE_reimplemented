@@ -215,61 +215,6 @@ def train_deep_cre(genome, annot, tpm_targets, upstream, downstream, genes_picke
     return output
 
 
-def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ignore_small_genes,
-            output_name, model_case):
-    genome = Fasta(filename=f"genome/{genome}", as_raw=True, read_ahead=10000, sequence_always_upper=True)
-    tpms = pd.read_csv(filepath_or_buffer=f"tpm_counts/{tpm_targets}", sep=',')
-    tpms.set_index('gene_id', inplace=True)
-    annot = pr.read_gtf(f=f"gene_models/{annot}", as_df=True)
-    annot = annot[annot['gene_biotype'] == 'protein_coding']
-    annot = annot[annot['Feature'] == 'gene']
-    annot = annot[['Chromosome', 'Start', 'End', 'Strand', 'gene_id']]
-    annot = annot[annot['Chromosome'] == val_chromosome]
-    expected_final_size = 2 * (upstream + downstream) + 20
-
-    x, y, gene_ids = [], [], []
-    for chrom, start, end, strand, gene_id in annot.values:
-        gene_size = end - start
-        extractable_downstream = downstream if gene_size // 2 > downstream else gene_size // 2
-        prom_start, prom_end = start - upstream, start + extractable_downstream
-        term_start, term_end = end - extractable_downstream, end + upstream
-
-        promoter = one_hot_encode(genome[chrom][prom_start:prom_end])
-        terminator = one_hot_encode(genome[chrom][term_start:term_end])
-        extracted_size = promoter.shape[0] + terminator.shape[0]
-        central_pad_size = expected_final_size - extracted_size
-
-        pad_size = 20 if ignore_small_genes.lower() == 'yes' else central_pad_size
-
-        if strand == '+':
-            seq = np.concatenate([
-                promoter,
-                np.zeros(shape=(pad_size, 4)),
-                terminator
-            ])
-        else:
-            seq = np.concatenate([
-                terminator[::-1],
-                np.zeros(shape=(pad_size, 4)),
-                promoter[::-1]
-            ])
-
-        if seq.shape[0] == expected_final_size:
-            x.append(seq)
-            y.append(tpms.loc[gene_id, 'target'])
-            gene_ids.append(gene_id)
-
-    x, y, gene_ids = np.array(x), np.array(y), np.array(gene_ids)
-
-    # Masking
-    x[:, upstream:upstream + 3, :] = 0
-    x[:, upstream + (downstream * 2) + 17:upstream + (downstream * 2) + 20, :] = 0
-
-    model = load_model(f"saved_models/{model_case}_{output_name}_model_{val_chromosome}.h5")
-    pred_probs = model.predict(x).ravel()
-    return x, y, pred_probs, gene_ids, model
-
-
 def get_time_stamp() -> str:
     """creates a time stamp for the current time
 

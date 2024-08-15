@@ -2,7 +2,7 @@ import argparse
 import os
 from typing import List
 import pandas as pd
-from utils import predict, get_time_stamp
+from utils import predict, get_time_stamp, get_filename_from_path
 import tensorflow as tf
 import h5py
 import numpy as np
@@ -108,8 +108,12 @@ def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosom
 
 
 def save_results(output_name: str, shap_actual_scores, shap_hypothetical_scores, gene_ids_seqs: List, preds_seqs: List):
-    file_name = os.path.splitext(os.path.basename(__file__))[0]
-    with h5py.File(name=f'results/shap/{output_name}_{file_name}_{get_time_stamp()}.h5', mode='w') as h5_file:
+    folder_name = os.path.join("results", "shap")
+    if not os.path.exists(folder_name):
+        os.mkdir(folder_name)
+    file_name = get_filename_from_path(__file__)
+    h5_file_name = os.path.join(folder_name, f'{output_name}_{file_name}_{get_time_stamp()}.h5')
+    with h5py.File(name=h5_file_name, mode='w') as h5_file:
         h5_file.create_dataset(name='contrib_scores', data=shap_actual_scores)
         h5_file.create_dataset(name="hypothetical_contrib_scores", data=shap_hypothetical_scores)
         pd.DataFrame({'gene_ids': gene_ids_seqs,

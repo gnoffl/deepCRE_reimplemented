@@ -120,11 +120,7 @@ def save_results(output_name: str, shap_actual_scores, shap_hypothetical_scores,
                     'preds': preds_seqs}).to_csv(path_or_buf=f'results/shap/{output_name}_{file_name}_{get_time_stamp()}_shap_meta.csv', index=False)
 
 
-def main():
-    tf.compat.v1.disable_eager_execution()
-    tf.compat.v1.disable_v2_behavior()
-    tf.config.set_visible_devices([], 'GPU')
-
+def parse_args():
     parser = argparse.ArgumentParser(
                         prog='deepCRE',
                         description="""
@@ -141,6 +137,15 @@ def main():
     parser.add_argument('--ignore_small_genes', help="Ignore small genes, can be yes or no", required=True)
 
     args = parser.parse_args()
+    return args
+
+
+def main():
+    tf.compat.v1.disable_eager_execution()
+    tf.compat.v1.disable_v2_behavior()
+    tf.config.set_visible_devices([], 'GPU')
+
+    args = parse_args()
     data = pd.read_csv(args.input, sep=',', header=None,
                     dtype={0: str, 1: str, 2: str, 3: str, 4: int, 5: str},
                     names=['genome', 'gtf', 'tpm', 'output', 'counts'])

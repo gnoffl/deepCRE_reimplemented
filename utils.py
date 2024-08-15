@@ -1,8 +1,6 @@
 import datetime
-import os.path
 from typing import Any
 import pickle
-from importlib import reload
 import numpy as np
 from tensorflow.keras.layers import Dropout, Dense, Input, Conv1D, Activation, MaxPool1D, Flatten
 from tensorflow.keras.optimizers import Adam
@@ -14,8 +12,7 @@ from pyfaidx import Fasta
 import pyranges as pr
 import pandas as pd
 from sklearn.utils import shuffle
-import h5py
-import modisco
+import os
 
 
 def one_hot_encode(sequence: str,
@@ -273,67 +270,25 @@ def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ig
     return x, y, pred_probs, gene_ids, model
 
 
-# ----------------------------------------------------------------------------------#
-# For Shap and MoDisco
-# ----------------------------------------------------------------------------------#
-
-
-
-# 2. MoDisco
-def modisco_run(contribution_scores, hypothetical_scores, one_hots, output_name):
-    if not os.path.exists('results/modisco'):
-        os.mkdir('results/modisco')
-
-    save_file = f"results/modisco/{output_name}_modisco.hdf5"
-    os.system(f'rm -rf {save_file}')
-
-    print('contributions', contribution_scores.shape)
-    print('hypothetical contributions', hypothetical_scores.shape)
-    print('correct predictions', one_hots.shape)
-    # -----------------------Running modisco----------------------------------------------#
-
-    null_per_pos_scores = modisco.coordproducers.LaplaceNullDist(num_to_samp=5000)
-    tfmodisco_results = modisco.tfmodisco_workflow.workflow.TfModiscoWorkflow(
-        # Slight modifications from the default settings
-        sliding_window_size=15,
-        flank_size=5,
-        target_seqlet_fdr=0.15,
-        seqlets_to_patterns_factory=modisco.tfmodisco_workflow.seqlets_to_patterns.TfModiscoSeqletsToPatternsFactory(
-            trim_to_window_size=10,
-            initial_flank_to_add=2,
-            final_flank_to_add=0,
-            final_min_cluster_size=30,
-            n_cores=5)
-    )(
-        task_names=['task0'],
-        contrib_scores={'task0': contribution_scores},
-        hypothetical_contribs={'task0': hypothetical_scores},
-        one_hot=one_hots,
-        null_per_pos_scores=null_per_pos_scores)
-
-    reload(modisco.util)
-    grp = h5py.File(save_file, "w")
-    tfmodisco_results.save_hdf5(grp)
-    grp.close()
-    print(f"Done with {output_name} Modisco run")
-
-
-def generate_motifs(genome, annot, tpm_targets, upstream, downstream, ignore_small_genes,
-                    output_name, model_case, n_chromosomes):
-
-    actual_scores, hypothetical_scores, one_hots, _, _ = extract_scores(genome=genome, annot=annot,
-                                                                        tpm_targets=tpm_targets,
-                                                                        upstream=upstream, downstream=downstream,
-                                                                        n_chromosome=n_chromosomes,
-                                                                        ignore_small_genes=ignore_small_genes,
-                                                                        output_name=output_name,
-                                                                        model_case=model_case)
-
-    print("Now running MoDisco --------------------------------------------------\n")
-    print(f"Species: {output_name} \n")
-    modisco_run(contribution_scores=actual_scores, hypothetical_scores=hypothetical_scores,
-                one_hots=one_hots, output_name=output_name)
-
-
 def get_time_stamp() -> str:
+    """creates a time stamp for the current time
+
+    Returns:
+        str: string in the format date_time
+    """
     return datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+
+
+def get_filename_from_path(path: str) -> str:
+    """takes a path and returns the name of the file it leads to
+
+    Args:
+        path (str): path to a file
+
+    Returns:
+        str: name of the file
+    """
+    if not os.path.isfile(path):
+        raise ValueError("path must lead to a file!")
+    file_name = os.path.splitext(os.path.basename(path))[0]
+    return file_name

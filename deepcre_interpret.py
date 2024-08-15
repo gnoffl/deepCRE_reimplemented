@@ -2,7 +2,8 @@ import argparse
 import os
 from typing import List
 import pandas as pd
-from utils import predict, get_time_stamp, get_filename_from_path
+from utils import get_time_stamp, get_filename_from_path
+from deepcre_predict import predict
 import tensorflow as tf
 import h5py
 import numpy as np

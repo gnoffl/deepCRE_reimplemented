@@ -6,7 +6,7 @@ from tensorflow.keras.models import load_model #type:ignore
 import pyranges as pr
 
 import pandas as pd
-from utils import get_filename_from_path, get_time_stamp, one_hot_encode
+from utils import get_filename_from_path, get_time_stamp, one_hot_encode, make_absolute_path
 
 
 def find_newest_model_path(output_name: str, val_chromosome: str, model_case: str) -> str:
@@ -23,7 +23,7 @@ def find_newest_model_path(output_name: str, val_chromosome: str, model_case: st
     Returns:
         str: path to the newest model fitting the given parameters
     """
-    path_to_models = os.path.join(os.path.abspath(__file__), "saved_models")
+    path_to_models = make_absolute_path("saved_models", start_file=__file__)
     candidate_models = [model for model in os.listdir(path_to_models) if model.startswith(f"{output_name}_{val_chromosome}_{model_case}") and model.endswith(".h5")]
     if not candidate_models:
         raise ValueError("no trained models fitting the given parameters were found! Consider training models first (train_ssr_models.py)")
@@ -34,10 +34,14 @@ def find_newest_model_path(output_name: str, val_chromosome: str, model_case: st
 
 def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ignore_small_genes,
             output_name, model_case):
-    genome = Fasta(filename=f"genome/{genome}", as_raw=True, read_ahead=10000, sequence_always_upper=True)
-    tpms = pd.read_csv(filepath_or_buffer=f"tpm_counts/{tpm_targets}", sep=',')
+    this_folder_path = os.path.dirname(os.path.abspath(__file__))
+    genome_path = os.path.join(this_folder_path, "genome", genome)
+    tpm_path = os.path.join(this_folder_path, "tpm_counts", tpm_targets)
+    annotation_path = os.path.join(this_folder_path, "gene_models", annot)
+    genome = Fasta(filename=genome_path, as_raw=True, read_ahead=10000, sequence_always_upper=True)
+    tpms = pd.read_csv(filepath_or_buffer=tpm_path, sep=',')
     tpms.set_index('gene_id', inplace=True)
-    annot = pr.read_gtf(f=f"gene_models/{annot}", as_df=True)
+    annot = pr.read_gtf(f=annotation_path, as_df=True)
     annot = annot[annot['gene_biotype'] == 'protein_coding']
     annot = annot[annot['Feature'] == 'gene']
     annot = annot[['Chromosome', 'Start', 'End', 'Strand', 'gene_id']]

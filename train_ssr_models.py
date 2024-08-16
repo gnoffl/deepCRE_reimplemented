@@ -1,7 +1,7 @@
 import argparse
 import os
 import pandas as pd
-from utils import get_filename_from_path, get_time_stamp, one_hot_encode
+from utils import get_filename_from_path, get_time_stamp, one_hot_encode, make_absolute_path
 from tensorflow.keras.layers import Dropout, Dense, Input, Conv1D, Activation, MaxPool1D, Flatten
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import Model
@@ -61,7 +61,8 @@ def deep_cre(x_train, y_train, x_val, y_val, output_name, model_case, chrom):
 
     time_stamp = get_time_stamp()
     file_name = get_filename_from_path(__file__)
-    checkpoint_path = os.path.join("saved_models", f"{output_name}_{chrom}_{model_case}_{file_name}_{time_stamp}.h5")
+    this_folder_path = os.path.dirname(os.path.abspath(__file__))
+    checkpoint_path = os.path.join(this_folder_path, "saved_models", f"{output_name}_{chrom}_{model_case}_{file_name}_{time_stamp}.h5")
     model_chkpt = ModelCheckpoint(filepath=checkpoint_path,
                                   save_best_only=True,
                                   verbose=1)
@@ -93,9 +94,10 @@ def extract_seq(genome, annot, tpm_targets, upstream, downstream, genes_picked, 
     :param ignore_small_genes: filter genes smaller than 1000 bp
     :return: [one_hot train set, one_hot val set, train targets, val targets]
     """
-    genome_path = os.path.join("genome", genome)
-    tpm_path = os.path.join("tpm_counts", tpm_targets)
-    annotation_path = os.path.join("gene_models", annot)
+    this_folder_path = os.path.dirname(os.path.abspath(__file__))
+    genome_path = os.path.join(this_folder_path, "genome", genome)
+    tpm_path = os.path.join(this_folder_path, "tpm_counts", tpm_targets)
+    annotation_path = os.path.join(this_folder_path, "gene_models", annot)
     genome = Fasta(filename=genome_path, as_raw=True, read_ahead=10000, sequence_always_upper=True)
     tpms = pd.read_csv(filepath_or_buffer=tpm_path, sep=',')
     tpms.set_index('gene_id', inplace=True)
@@ -231,10 +233,12 @@ def main():
         raise Exception("Input file incorrect. Your input file must contain 6 columns and must be .csv")
 
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-    if not os.path.exists('results'):
-        os.makedirs('results')
-    if not os.path.exists('saved_models'):
-        os.makedirs('saved_models')
+    result_path = make_absolute_path("results", start_file=__file__)
+    models_path = make_absolute_path("saved_models", start_file=__file__)
+    if not os.path.exists(result_path):
+        os.makedirs(result_path)
+    if not os.path.exists(models_path):
+        os.makedirs(models_path)
 
     file_name = get_filename_from_path(__file__)
 

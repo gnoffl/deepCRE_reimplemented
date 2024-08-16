@@ -61,8 +61,8 @@ def deep_cre(x_train, y_train, x_val, y_val, output_name, model_case, chrom):
 
     time_stamp = get_time_stamp()
     file_name = get_filename_from_path(__file__)
-    file_path = os.path.join("saved_models", f"{output_name}_{model_case}_{chrom}_{file_name}_{time_stamp}.h5")
-    model_chkpt = ModelCheckpoint(filepath=file_path,
+    checkpoint_path = os.path.join("saved_models", f"{output_name}_{chrom}_{model_case}_{file_name}_{time_stamp}.h5")
+    model_chkpt = ModelCheckpoint(filepath=checkpoint_path,
                                   save_best_only=True,
                                   verbose=1)
     early_stop = EarlyStopping(patience=10)
@@ -72,7 +72,7 @@ def deep_cre(x_train, y_train, x_val, y_val, output_name, model_case, chrom):
     model.fit(x_train, y_train, batch_size=64, epochs=100, validation_data=(x_val, y_val),
               callbacks=[early_stop, model_chkpt, reduce_lr])
 
-    loaded_model = load_model(file_path)
+    loaded_model = load_model(checkpoint_path)
     output = loaded_model.evaluate(x_val, y_val)
     return output
 

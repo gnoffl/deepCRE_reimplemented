@@ -14,8 +14,8 @@ def modisco_run(contribution_scores, hypothetical_scores, one_hots, output_name)
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
 
-    file_name = get_filename_from_path(__file__)
-    save_file = os.path.join(folder_name, f"{output_name}_{file_name}_{get_time_stamp()}.hdf5")
+    this_file_name = get_filename_from_path(__file__)
+    save_file = os.path.join(folder_name, f"{output_name}_{this_file_name}_{get_time_stamp()}.hdf5")
 
     print('contributions', contribution_scores.shape)
     print('hypothetical contributions', hypothetical_scores.shape)

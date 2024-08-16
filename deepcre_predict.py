@@ -9,6 +9,29 @@ import pandas as pd
 from utils import get_filename_from_path, get_time_stamp, one_hot_encode
 
 
+def find_newest_model_path(output_name: str, val_chromosome: str, model_case: str) -> str:
+    """finds path to newest model fitting the given parameters
+
+    Args:
+        output_name (str): output name the was used for model training
+        val_chromosome (str): validation chromosome of the model
+        model_case (str): SSR or SSC for the model to be loaded
+
+    Raises:
+        ValueError: raises an error if no fitting model is found
+
+    Returns:
+        str: path to the newest model fitting the given parameters
+    """
+    path_to_models = os.path.join(os.path.abspath(__file__), "saved_models")
+    candidate_models = [model for model in os.listdir(path_to_models) if model.startswith(f"{output_name}_{val_chromosome}_{model_case}") and model.endswith(".h5")]
+    if not candidate_models:
+        raise ValueError("no trained models fitting the given parameters were found! Consider training models first (train_ssr_models.py)")
+    candidate_models.sort()
+    path_to_newest_model = os.path.join(path_to_models, candidate_models[-1])
+    return path_to_newest_model
+
+
 def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ignore_small_genes,
             output_name, model_case):
     genome = Fasta(filename=f"genome/{genome}", as_raw=True, read_ahead=10000, sequence_always_upper=True)
@@ -59,7 +82,8 @@ def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ig
     x[:, upstream:upstream + 3, :] = 0
     x[:, upstream + (downstream * 2) + 17:upstream + (downstream * 2) + 20, :] = 0
 
-    model = load_model(f"saved_models/{model_case}_{output_name}_model_{val_chromosome}.h5")
+    newest_model_path = find_newest_model_path(output_name=output_name, val_chromosome=val_chromosome, model_case=model_case)
+    model = load_model(newest_model_path)
     pred_probs = model.predict(x).ravel()
     return x, y, pred_probs, gene_ids, model
 

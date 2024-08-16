@@ -47,3 +47,20 @@ def get_filename_from_path(path: str) -> str:
         raise ValueError("path must lead to a file!")
     file_name = os.path.splitext(os.path.basename(path))[0]
     return file_name
+
+
+def make_absolute_path(*steps_on_path, start_file: str = "") -> str:
+    """creates an absoulte path from a starting location
+
+    Args:
+        start_file (str, optional): file from which the path starts. Defaults to "".
+        steps_on_path (str, optional): arbitrary number of folders with an optionally file at the end which will be appended to the start path.
+
+    Returns:
+        str: absolute version of the path
+    """
+    if start_file == "":
+        start_file = __file__
+    start_folder = os.path.dirname(os.path.abspath(start_file))
+    result_path = os.path.join(start_folder, *steps_on_path)
+    return result_path

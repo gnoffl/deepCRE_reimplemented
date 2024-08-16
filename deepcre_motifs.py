@@ -5,17 +5,17 @@ import os
 import modisco
 from importlib import reload
 import h5py
-from utils import get_filename_from_path, get_time_stamp
+from utils import get_filename_from_path, get_time_stamp, make_absolute_path
 from deepcre_interpret import extract_scores
 
 
 def modisco_run(contribution_scores, hypothetical_scores, one_hots, output_name):
-    folder_name = os.path.join('results', 'modisco')
-    if not os.path.exists(folder_name):
-        os.mkdir(folder_name)
+    folder_path = make_absolute_path('results', 'modisco', start_file=__file__)
+    if not os.path.exists(folder_path):
+        os.mkdir(folder_path)
 
     this_file_name = get_filename_from_path(__file__)
-    save_file = os.path.join(folder_name, f"{output_name}_{this_file_name}_{get_time_stamp()}.hdf5")
+    save_file = os.path.join(folder_path, f"{output_name}_{this_file_name}_{get_time_stamp()}.hdf5")
 
     print('contributions', contribution_scores.shape)
     print('hypothetical contributions', hypothetical_scores.shape)

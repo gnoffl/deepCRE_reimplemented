@@ -61,8 +61,7 @@ def deep_cre(x_train, y_train, x_val, y_val, output_name, model_case, chrom):
 
     time_stamp = get_time_stamp()
     file_name = get_filename_from_path(__file__)
-    this_folder_path = os.path.dirname(os.path.abspath(__file__))
-    checkpoint_path = os.path.join(this_folder_path, "saved_models", f"{output_name}_{chrom}_{model_case}_{file_name}_{time_stamp}.h5")
+    checkpoint_path = make_absolute_path("saved_models", f"{output_name}_{chrom}_{model_case}_{file_name}_{time_stamp}.h5", start_file=__file__)
     model_chkpt = ModelCheckpoint(filepath=checkpoint_path,
                                   save_best_only=True,
                                   verbose=1)
@@ -94,10 +93,9 @@ def extract_seq(genome, annot, tpm_targets, upstream, downstream, genes_picked, 
     :param ignore_small_genes: filter genes smaller than 1000 bp
     :return: [one_hot train set, one_hot val set, train targets, val targets]
     """
-    this_folder_path = os.path.dirname(os.path.abspath(__file__))
-    genome_path = os.path.join(this_folder_path, "genome", genome)
-    tpm_path = os.path.join(this_folder_path, "tpm_counts", tpm_targets)
-    annotation_path = os.path.join(this_folder_path, "gene_models", annot)
+    genome_path = make_absolute_path("genome", genome, start_file=__file__)
+    tpm_path = make_absolute_path("tpm_counts", tpm_targets, start_file=__file__)
+    annotation_path = make_absolute_path("gene_models", annot, start_file=__file__)
     genome = Fasta(filename=genome_path, as_raw=True, read_ahead=10000, sequence_always_upper=True)
     tpms = pd.read_csv(filepath_or_buffer=tpm_path, sep=',')
     tpms.set_index('gene_id', inplace=True)
@@ -259,7 +257,7 @@ def main():
             results_genome.append(results)
             print(f"Results for genome: {genome}, chromosome: {val_chrom}: {results}")
         results_genome = pd.DataFrame(results_genome, columns=['loss', 'accuracy', 'auROC', 'auPR'])
-        save_file = os.path.join('results', f"{output_name}_{args.model_case}_{file_name}_{get_time_stamp()}.csv")
+        save_file = make_absolute_path('results', f"{output_name}_{args.model_case}_{file_name}_{get_time_stamp()}.csv", start_file=__file__)
         results_genome.to_csv(path_or_buf=save_file, index=False)
         print(results_genome.head())
 

@@ -2,7 +2,7 @@ import argparse
 import os
 from typing import List
 import pandas as pd
-from utils import get_time_stamp, get_filename_from_path
+from utils import get_time_stamp, get_filename_from_path, make_absolute_path
 from deepcre_predict import predict
 import tensorflow as tf
 import h5py
@@ -72,7 +72,7 @@ def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosom
     :param model_case: SSR, SSC or MSR
     :return: actual scores, hypothetical scores and one hot encodings of correct predictions across the entire genome
     """
-    folder_path = os.path.join("results", "shap")
+    folder_path = make_absolute_path("results", "shap")
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     shap_actual_scores, shap_hypothetical_scores, one_hots_seqs, gene_ids_seqs, preds_seqs = [], [], [], [], []
@@ -110,7 +110,7 @@ def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosom
 
 
 def save_results(output_name: str, shap_actual_scores, shap_hypothetical_scores, gene_ids_seqs: List, preds_seqs: List):
-    folder_name = os.path.join("results", "shap")
+    folder_name = make_absolute_path("results", "shap")
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
     file_name = get_filename_from_path(__file__)
@@ -118,8 +118,8 @@ def save_results(output_name: str, shap_actual_scores, shap_hypothetical_scores,
     with h5py.File(name=h5_file_name, mode='w') as h5_file:
         h5_file.create_dataset(name='contrib_scores', data=shap_actual_scores)
         h5_file.create_dataset(name="hypothetical_contrib_scores", data=shap_hypothetical_scores)
-        pd.DataFrame({'gene_ids': gene_ids_seqs,
-                    'preds': preds_seqs}).to_csv(path_or_buf=f'results/shap/{output_name}_{file_name}_{get_time_stamp()}_shap_meta.csv', index=False)
+        save_path = make_absolute_path('results', 'shap', f'{output_name}_{file_name}_{get_time_stamp()}_shap_meta.csv', start_file=__file__)
+        pd.DataFrame({'gene_ids': gene_ids_seqs, 'preds': preds_seqs}).to_csv(path_or_buf=save_path, index=False)
 
 
 def parse_args():

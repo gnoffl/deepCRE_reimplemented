@@ -34,10 +34,9 @@ def find_newest_model_path(output_name: str, val_chromosome: str, model_case: st
 
 def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ignore_small_genes,
             output_name, model_case):
-    this_folder_path = os.path.dirname(os.path.abspath(__file__))
-    genome_path = os.path.join(this_folder_path, "genome", genome)
-    tpm_path = os.path.join(this_folder_path, "tpm_counts", tpm_targets)
-    annotation_path = os.path.join(this_folder_path, "gene_models", annot)
+    genome_path = make_absolute_path("genome", genome, start_file=__file__)
+    tpm_path = make_absolute_path("tpm_counts", tpm_targets, start_file=__file__)
+    annotation_path = make_absolute_path("gene_models", annot, start_file=__file__)
     genome = Fasta(filename=genome_path, as_raw=True, read_ahead=10000, sequence_always_upper=True)
     tpms = pd.read_csv(filepath_or_buffer=tpm_path, sep=',')
     tpms.set_index('gene_id', inplace=True)
@@ -121,7 +120,7 @@ def main():
     if data.shape[1] != 5:
         raise Exception("Input file incorrect. Your input file must contain 5 columns and must be .csv")
 
-    folder_name = os.path.join('results', 'predictions')
+    folder_name = make_absolute_path('results', 'predictions', start_file=__file__)
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
     file_name = get_filename_from_path(__file__)

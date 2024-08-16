@@ -72,8 +72,9 @@ def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosom
     :param model_case: SSR, SSC or MSR
     :return: actual scores, hypothetical scores and one hot encodings of correct predictions across the entire genome
     """
-    if not os.path.exists('results/shap'):
-        os.makedirs('results/shap')
+    folder_path = os.path.join("results", "shap")
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
     shap_actual_scores, shap_hypothetical_scores, one_hots_seqs, gene_ids_seqs, preds_seqs = [], [], [], [], []
     for val_chrom in range(1, n_chromosome + 1):
         x, y, preds, gene_ids, model = predict(genome, annot, tpm_targets, upstream, downstream, str(val_chrom),

@@ -1,7 +1,11 @@
 import datetime
-from typing import Any
+from typing import Any, Dict
 import numpy as np
 import os
+from pyfaidx import Fasta
+import pyranges as pr
+
+import pandas as pd
 
 
 def one_hot_encode(sequence: str,
@@ -64,3 +68,44 @@ def make_absolute_path(*steps_on_path, start_file: str = "") -> str:
     start_folder = os.path.dirname(os.path.abspath(start_file))
     result_path = os.path.join(start_folder, *steps_on_path)
     return result_path
+
+
+def load_input_files(genome_file_name: str = "", annotation_file_name: str = "", tpm_counts_file_name: str = "") -> Dict[str, pd.DataFrame]:
+    """loads input files and returns them in a Dict
+
+    Args:
+        genome_file_name (str, optional): file name of the genome, saved in the subfolder \"genome\". Defaults to "".
+        annotation_file_name (str, optional): file name of the annotation, saved in the subfolder \"gene_models\". Defaults to "".
+        tpm_counts_file_name (str, optional):  file name of the tpm counts, saved in the subfolder \"tpm_counts\". Defaults to "".
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        Dict[str, pd.DataFrame]: _description_
+    """
+    if genome_file_name == "" and annotation_file_name == "" and tpm_counts_file_name == "":
+        raise ValueError("at least one of the file names must be given!")
+    results = {}
+
+    if genome_file_name != "":
+        genome_path = make_absolute_path("genome", genome_file_name, start_file=__file__)
+        genome = Fasta(filename=genome_path, as_raw=True, read_ahead=10000, sequence_always_upper=True)
+        results["genome"] = genome
+
+    if annotation_file_name != "":
+        annotation_path = make_absolute_path("gene_models", annotation_file_name, start_file=__file__)
+        annotation = pr.read_gtf(f=annotation_path, as_df=True)
+        annotation = annotation[annotation['gene_biotype'] == 'protein_coding']
+        annotation = annotation[annotation['Feature'] == 'gene']
+        annotation = annotation[['Chromosome', 'Start', 'End', 'Strand', 'gene_id']]
+        # annot = annot[annot['Chromosome'] == val_chromosome]
+        results["annotation"] = annotation
+
+    if tpm_counts_file_name != "":
+        tpm_path = make_absolute_path("tpm_counts", tpm_counts_file_name, start_file=__file__)
+        tpms = pd.read_csv(filepath_or_buffer=tpm_path, sep=',')
+        tpms.set_index('gene_id', inplace=True)
+        results["tpms"] = tpms
+
+    return results

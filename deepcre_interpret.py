@@ -84,8 +84,8 @@ def extract_scores(genome_file_name, annotation_file_name, tpm_counts_file_name,
     tpms = loaded_input_files["tpms"]
     extracted_genes = extract_genes(genome, annotation, extragenic=upstream, intragenic=downstream, ignore_small_genes=ignore_small_genes, tpms=tpms, target_chromosomes=())
     for val_chrom in range(1, n_chromosome + 1):
-        x, y, preds, gene_ids, model = predict_self(genome, annotation, tpms, upstream, downstream, str(val_chrom),
-                                               ignore_small_genes, output_name, model_case, extracted_genes=extracted_genes)
+        x, y, preds, gene_ids, model = predict_self(extragenic=upstream, intragenic=downstream, val_chromosome=str(val_chrom),
+                                               output_name=output_name, model_case=model_case, extracted_genes=extracted_genes)
         preds = preds > 0.5
         preds = preds.astype(int)
         correct_x, correct_y, correct_gene_ids = [], [], []

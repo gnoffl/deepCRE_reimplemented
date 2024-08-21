@@ -32,8 +32,7 @@ def find_newest_model_path(output_name: str, val_chromosome: str, model_case: st
     return path_to_newest_model
 
 
-def predict_self(genome, annotation, tpm_targets, extragenic, intragenic, val_chromosome, ignore_small_genes,
-            output_name, model_case, extracted_genes):
+def predict_self(extragenic, intragenic, val_chromosome, output_name, model_case, extracted_genes):
 
     x, y, gene_ids = extracted_genes[str(val_chromosome)]
 
@@ -46,8 +45,7 @@ def predict_self(genome, annotation, tpm_targets, extragenic, intragenic, val_ch
     pred_probs = model.predict(x).ravel()
     return x, y, pred_probs, gene_ids, model
 
-def predict_other(genome, annotation, tpm_targets, extragenic, intragenic, val_chromosome, ignore_small_genes,
-            output_name, model_case, extracted_genes):
+def predict_other(extragenic, intragenic, val_chromosome, output_name, model_case, extracted_genes):
 
     x, y, gene_ids = extracted_genes[str(val_chromosome)]
 
@@ -107,9 +105,8 @@ def main():
         ignore_small_genes = args.ignore_small_genes
         extracted_genes = extract_genes(genome=genome, annotation=annotation, extragenic=extragenic, intragenic=intragenic, ignore_small_genes=ignore_small_genes, tpms=tpms, target_chromosomes=())
         for chrom in range(1, num_chromosomes + 1):
-            _, y, pred_probs, gene_ids, _ = predict_self(genome=genome, annotation=annotation, tpm_targets=tpms, extragenic=extragenic,
-                                                    intragenic=intragenic, val_chromosome=str(chrom), output_name=output_name,
-                                                    model_case=args.model_case, ignore_small_genes=ignore_small_genes, extracted_genes=extracted_genes)
+            _, y, pred_probs, gene_ids, _ = predict_self(extragenic=extragenic, intragenic=intragenic, val_chromosome=str(chrom), output_name=output_name,
+                                                    model_case=args.model_case, extracted_genes=extracted_genes)
             true_targets.extend(y)
             preds.extend(pred_probs)
             genes.extend(gene_ids)

@@ -1,12 +1,11 @@
 import argparse
 import os
-from pyfaidx import Fasta
+from typing import Dict, List, Tuple
 import numpy as np
 from tensorflow.keras.models import load_model #type:ignore
-import pyranges as pr
 
 import pandas as pd
-from utils import get_filename_from_path, get_time_stamp, one_hot_encode, make_absolute_path
+from utils import get_filename_from_path, get_time_stamp, load_input_files, one_hot_encode, make_absolute_path
 
 
 def find_newest_model_path(output_name: str, val_chromosome: str, model_case: str) -> str:
@@ -32,23 +31,14 @@ def find_newest_model_path(output_name: str, val_chromosome: str, model_case: st
     return path_to_newest_model
 
 
-def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ignore_small_genes,
-            output_name, model_case):
-    genome_path = make_absolute_path("genome", genome, start_file=__file__)
-    tpm_path = make_absolute_path("tpm_counts", tpm_targets, start_file=__file__)
-    annotation_path = make_absolute_path("gene_models", annot, start_file=__file__)
-    genome = Fasta(filename=genome_path, as_raw=True, read_ahead=10000, sequence_always_upper=True)
-    tpms = pd.read_csv(filepath_or_buffer=tpm_path, sep=',')
-    tpms.set_index('gene_id', inplace=True)
-    annot = pr.read_gtf(f=annotation_path, as_df=True)
-    annot = annot[annot['gene_biotype'] == 'protein_coding']
-    annot = annot[annot['Feature'] == 'gene']
-    annot = annot[['Chromosome', 'Start', 'End', 'Strand', 'gene_id']]
-    annot = annot[annot['Chromosome'] == val_chromosome]
+def extract_genes(genome, annot, upstream, downstream, ignore_small_genes, tpms, target_chromosomes: Tuple[str, ...]) -> Dict[str, Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]:
+    extracted_seqs = {}
     expected_final_size = 2 * (upstream + downstream) + 20
-
-    x, y, gene_ids = [], [], []
     for chrom, start, end, strand, gene_id in annot.values:#type:ignore
+        # skip all chromosomes that are not in the target chromosomes. Empty tuple () means, that all chromosomes should be extracted
+        if target_chromosomes != () and chrom not in target_chromosomes:
+            continue
+
         gene_size = end - start
         extractable_downstream = downstream if gene_size // 2 > downstream else gene_size // 2
         prom_start, prom_end = start - upstream, start + extractable_downstream
@@ -75,20 +65,45 @@ def predict(genome, annot, tpm_targets, upstream, downstream, val_chromosome, ig
             ])
 
         if seq.shape[0] == expected_final_size:
+            extracted_tuple = extracted_seqs.get(chrom, ())
+            if extracted_tuple == ():
+                x, y, gene_ids = [], [], []
+            else:
+                x = extracted_tuple[0]
+                y = extracted_tuple[1]
+                gene_ids = extracted_tuple[2]
+            # print(x)
+            # print(type(x))
             x.append(seq)
             y.append(tpms.loc[gene_id, 'target'])
             gene_ids.append(gene_id)
+            extracted_seqs[chrom] = (x, y, gene_ids)
 
-    x, y, gene_ids = np.array(x), np.array(y), np.array(gene_ids)
+    for chrom, tuple_ in extracted_seqs.items():
+        x, y, gene_ids = tuple_
+        x, y, gene_ids = np.array(x), np.array(y), np.array(gene_ids)
+        extracted_seqs[chrom] = (x, y, gene_ids)
+    return extracted_seqs
+
+
+def predict_self(genome, annotation, tpm_targets, extragenic, intragenic, val_chromosome, ignore_small_genes,
+            output_name, model_case):
+
+    extracted_genes = extract_genes(genome, annotation, extragenic, intragenic, ignore_small_genes, tpm_targets, target_chromosomes=())
+    print(extracted_genes.keys())
+    x, y, gene_ids = extracted_genes[str(val_chromosome)]
 
     # Masking
-    x[:, upstream:upstream + 3, :] = 0
-    x[:, upstream + (downstream * 2) + 17:upstream + (downstream * 2) + 20, :] = 0
+    x[:, extragenic:extragenic + 3, :] = 0
+    x[:, extragenic + (intragenic * 2) + 17:extragenic + (intragenic * 2) + 20, :] = 0
 
     newest_model_path = find_newest_model_path(output_name=output_name, val_chromosome=val_chromosome, model_case=model_case)
     model = load_model(newest_model_path)
     pred_probs = model.predict(x).ravel()
     return x, y, pred_probs, gene_ids, model
+
+def predict_other():
+    pass
 
 
 def parse_args():
@@ -122,15 +137,19 @@ def main():
 
     folder_name = make_absolute_path('results', 'predictions', start_file=__file__)
     if not os.path.exists(folder_name):
-        os.mkdir(folder_name)
+        os.makedirs(folder_name)
     file_name = get_filename_from_path(__file__)
 
 
-    for genome, gtf, tpm_counts, output_name, num_chromosomes in data.values:
+    for genome_file_name, annotation_file_name, tpm_counts_file_name, output_name, num_chromosomes in data.values:
         true_targets, preds, genes = [], [], []
+        loaded_input_files = load_input_files(genome_file_name=genome_file_name, annotation_file_name=annotation_file_name, tpm_counts_file_name=tpm_counts_file_name)
+        genome = loaded_input_files["genome"]
+        annotation = loaded_input_files["annotation"]
+        tpms = loaded_input_files["tpms"]
         for chrom in range(1, num_chromosomes + 1):
-            _, y, pred_probs, gene_ids, _ = predict(genome=genome, annot=gtf, tpm_targets=tpm_counts, upstream=1000,
-                                                    downstream=500, val_chromosome=str(chrom), output_name=output_name,
+            _, y, pred_probs, gene_ids, _ = predict_self(genome=genome, annotation=annotation, tpm_targets=tpms, extragenic=1000,
+                                                    intragenic=500, val_chromosome=str(chrom), output_name=output_name,
                                                     model_case=args.model_case, ignore_small_genes=args.ignore_small_genes)
             true_targets.extend(y)
             preds.extend(pred_probs)

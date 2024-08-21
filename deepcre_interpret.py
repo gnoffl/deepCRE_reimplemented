@@ -2,8 +2,8 @@ import argparse
 import os
 from typing import List
 import pandas as pd
-from utils import get_time_stamp, get_filename_from_path, make_absolute_path
-from deepcre_predict import predict
+from utils import get_time_stamp, get_filename_from_path, load_input_files, make_absolute_path
+from deepcre_predict import predict_self
 import tensorflow as tf
 import h5py
 import numpy as np
@@ -55,7 +55,7 @@ def compute_actual_hypothetical_scores(x, model):
     return actual_scores, hypothetical_scores
 
 
-def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosome, ignore_small_genes,
+def extract_scores(genome_file_name, annotation_file_name, tpm_counts_file_name, upstream, downstream, n_chromosome, ignore_small_genes,
                    output_name, model_case):
     """
     This function performs predictions, extracts correct predictions and performs shap computations. This will be
@@ -76,8 +76,12 @@ def extract_scores(genome, annot, tpm_targets, upstream, downstream, n_chromosom
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     shap_actual_scores, shap_hypothetical_scores, one_hots_seqs, gene_ids_seqs, preds_seqs = [], [], [], [], []
+    loaded_input_files = load_input_files(genome_file_name=genome_file_name, annotation_file_name=annotation_file_name, tpm_counts_file_name=tpm_counts_file_name)
+    genome = loaded_input_files["genome"]
+    annotation = loaded_input_files["annotation"]
+    tpms = loaded_input_files["tpms"]
     for val_chrom in range(1, n_chromosome + 1):
-        x, y, preds, gene_ids, model = predict(genome, annot, tpm_targets, upstream, downstream, str(val_chrom),
+        x, y, preds, gene_ids, model = predict_self(genome, annotation, tpms, upstream, downstream, str(val_chrom),
                                                ignore_small_genes, output_name, model_case)
         preds = preds > 0.5
         preds = preds.astype(int)
@@ -157,7 +161,7 @@ def main():
 
 
     for genome, gtf, tpm_counts, output_name, num_chromosomes in data.values:
-        results = extract_scores(genome=genome, annot=gtf, tpm_targets=tpm_counts, upstream=1000, downstream=500,
+        results = extract_scores(genome=genome, annotation_file_name=gtf, tpm_counts_file_name=tpm_counts, upstream=1000, downstream=500,
                     n_chromosome=num_chromosomes, ignore_small_genes=args.ignore_small_genes,
                     output_name=output_name, model_case=args.model_case)
         shap_actual_scores, shap_hypothetical_scores, one_hots_seqs, gene_ids_seqs, pred_seqs = results

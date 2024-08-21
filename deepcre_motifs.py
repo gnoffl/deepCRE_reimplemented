@@ -51,8 +51,8 @@ def modisco_run(contribution_scores, hypothetical_scores, one_hots, output_name)
 def generate_motifs(genome, annot, tpm_targets, upstream, downstream, ignore_small_genes,
                     output_name, model_case, n_chromosomes):
 
-    actual_scores, hypothetical_scores, one_hots, _, _ = extract_scores(genome=genome, annot=annot,
-                                                                        tpm_targets=tpm_targets,
+    actual_scores, hypothetical_scores, one_hots, _, _ = extract_scores(genome_file_name=genome, annotation_file_name=annot,
+                                                                        tpm_counts_file_name=tpm_targets,
                                                                         upstream=upstream, downstream=downstream,
                                                                         n_chromosome=n_chromosomes,
                                                                         ignore_small_genes=ignore_small_genes,

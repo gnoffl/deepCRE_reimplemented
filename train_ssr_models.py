@@ -2,12 +2,12 @@ import argparse
 import os
 import pandas as pd
 from utils import get_filename_from_path, get_time_stamp, one_hot_encode, make_absolute_path
-from tensorflow.keras.layers import Dropout, Dense, Input, Conv1D, Activation, MaxPool1D, Flatten
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras import Model
-from tensorflow.keras.models import load_model
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.metrics import AUC
+from tensorflow.keras.layers import Dropout, Dense, Input, Conv1D, Activation, MaxPool1D, Flatten               #type:ignore
+from tensorflow.keras.optimizers import Adam                                                                    #type:ignore
+from tensorflow.keras import Model                                                                              #type:ignore
+from tensorflow.keras.models import load_model                                                                  #type:ignore
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau                        #type:ignore
+from tensorflow.keras.metrics import AUC                                                                        #type:ignore
 import pickle
 import numpy as np
 from pyfaidx import Fasta
@@ -106,7 +106,7 @@ def extract_seq(genome, annot, tpm_targets, upstream, downstream, genes_picked, 
     expected_final_size = 2*(upstream + downstream) + 20
 
     train_seqs, val_seqs, train_targets, val_targets = [], [], [], []
-    for chrom, start, end, strand, gene_id in annot.values:
+    for chrom, start, end, strand, gene_id in annot.values:#type:ignore
         gene_size = end - start
         extractable_downstream = downstream if gene_size//2 > downstream else gene_size//2
         prom_start, prom_end = start - upstream, start + extractable_downstream
@@ -179,7 +179,7 @@ def balance_dataset(x, y):
         np.take(y, selected_low_train, axis=0),
         np.take(y, selected_high_train, axis=0)
     ], axis=0)
-    x_train, y_train = shuffle(x_train, y_train, random_state=42)
+    x_train, y_train = shuffle(x_train, y_train, random_state=42)#type:ignore
     return x_train, y_train
 
 

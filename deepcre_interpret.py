@@ -86,7 +86,7 @@ def extract_scores(genome_file_name, annotation_file_name, tpm_counts_file_name,
         preds = preds > 0.5
         preds = preds.astype(int)
         correct_x, correct_y, correct_gene_ids = [], [], []
-        for idx in range(x.shape[0]):
+        for idx in range(x.shape[0]): #type:ignore
             if preds[idx] == y[idx]:
                 correct_x.append(x[idx])
                 correct_y.append(y[idx])
@@ -161,7 +161,7 @@ def main():
 
 
     for genome, gtf, tpm_counts, output_name, num_chromosomes in data.values:
-        results = extract_scores(genome=genome, annotation_file_name=gtf, tpm_counts_file_name=tpm_counts, upstream=1000, downstream=500,
+        results = extract_scores(genome_file_name=genome, annotation_file_name=gtf, tpm_counts_file_name=tpm_counts, upstream=1000, downstream=500,
                     n_chromosome=num_chromosomes, ignore_small_genes=args.ignore_small_genes,
                     output_name=output_name, model_case=args.model_case)
         shap_actual_scores, shap_hypothetical_scores, one_hots_seqs, gene_ids_seqs, pred_seqs = results

@@ -1,5 +1,6 @@
 import argparse
 import os
+from typing import Dict, List, Tuple
 import pandas as pd
 from utils import get_filename_from_path, get_time_stamp, one_hot_encode, make_absolute_path
 from tensorflow.keras.layers import Dropout, Dense, Input, Conv1D, Activation, MaxPool1D, Flatten               #type:ignore
@@ -13,6 +14,61 @@ import numpy as np
 from pyfaidx import Fasta
 import pyranges as pr
 from sklearn.utils import shuffle
+
+
+def extract_genes(genome, annotation, extragenic, intragenic, ignore_small_genes, tpms, target_chromosomes: Tuple[str, ...]) -> Dict[str, Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]]:
+    extracted_seqs = {}
+    expected_final_size = 2 * (extragenic + intragenic) + 20
+    for chrom, start, end, strand, gene_id in annotation.values:#type:ignore
+        # skip all chromosomes that are not in the target chromosomes. Empty tuple () means, that all chromosomes should be extracted
+        if target_chromosomes != () and chrom not in target_chromosomes:
+            continue
+
+        gene_size = end - start
+        extractable_downstream = intragenic if gene_size // 2 > intragenic else gene_size // 2
+        prom_start, prom_end = start - extragenic, start + extractable_downstream
+        term_start, term_end = end - extractable_downstream, end + extragenic
+
+        promoter = one_hot_encode(genome[chrom][prom_start:prom_end])
+        terminator = one_hot_encode(genome[chrom][term_start:term_end])
+        extracted_size = promoter.shape[0] + terminator.shape[0]
+        central_pad_size = expected_final_size - extracted_size
+
+        pad_size = 20 if ignore_small_genes.lower() == 'yes' else central_pad_size
+
+        if strand == '+':
+            seq = np.concatenate([
+                promoter,
+                np.zeros(shape=(pad_size, 4)),
+                terminator
+            ])
+        else:
+            seq = np.concatenate([
+                terminator[::-1],
+                np.zeros(shape=(pad_size, 4)),
+                promoter[::-1]
+            ])
+
+        if seq.shape[0] == expected_final_size:
+            extracted_tuple = extracted_seqs.get(chrom, ())
+            if extracted_tuple == ():
+                x, y, gene_ids = [], [], []
+            else:
+                x = extracted_tuple[0]
+                y = extracted_tuple[1]
+                gene_ids = extracted_tuple[2]
+            # print(x)
+            # print(type(x))
+            x.append(seq)
+            y.append(tpms.loc[gene_id, 'target'])
+            gene_ids.append(gene_id)
+            extracted_seqs[chrom] = (x, y, gene_ids)
+
+    for chrom, tuple_ in extracted_seqs.items():
+        x, y, gene_ids = tuple_
+        x, y, gene_ids = np.array(x), np.array(y), np.array(gene_ids)
+        extracted_seqs[chrom] = (x, y, gene_ids)
+    return extracted_seqs
 
 
 def deep_cre(x_train, y_train, x_val, y_val, output_name, model_case, chrom):

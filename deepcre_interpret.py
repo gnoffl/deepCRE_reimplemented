@@ -2,13 +2,15 @@ import argparse
 import os
 from typing import List
 import pandas as pd
-from utils import get_time_stamp, get_filename_from_path, load_input_files, make_absolute_path
-from deepcre_predict import predict_self
 import tensorflow as tf
 import h5py
 import numpy as np
 from deeplift.dinuc_shuffle import dinuc_shuffle
 import shap
+
+from utils import get_time_stamp, get_filename_from_path, load_input_files, make_absolute_path
+from deepcre_predict import predict_self
+from train_ssr_models import extract_genes
 
 
 # 1. Shap
@@ -80,9 +82,10 @@ def extract_scores(genome_file_name, annotation_file_name, tpm_counts_file_name,
     genome = loaded_input_files["genome"]
     annotation = loaded_input_files["annotation"]
     tpms = loaded_input_files["tpms"]
+    extracted_genes = extract_genes(genome, annotation, extragenic=upstream, intragenic=downstream, ignore_small_genes=ignore_small_genes, tpms=tpms, target_chromosomes=())
     for val_chrom in range(1, n_chromosome + 1):
         x, y, preds, gene_ids, model = predict_self(genome, annotation, tpms, upstream, downstream, str(val_chrom),
-                                               ignore_small_genes, output_name, model_case)
+                                               ignore_small_genes, output_name, model_case, extracted_genes=extracted_genes)
         preds = preds > 0.5
         preds = preds.astype(int)
         correct_x, correct_y, correct_gene_ids = [], [], []

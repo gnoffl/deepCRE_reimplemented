@@ -4,8 +4,9 @@ import pandas as pd
 import unittest
 import pyranges as pr
 
-from utils import make_absolute_path
-from deepcre_predict import find_newest_model_path
+from train_ssr_models import extract_genes
+from utils import load_input_files, make_absolute_path
+from deepcre_predict import find_newest_model_path, predict_other, predict_self
 
 def compare_lists(list1, list2) -> bool:
     if len(list1) != len(list2):
@@ -40,7 +41,7 @@ def test_gene_dist(self):
     annot = annot[['Chromosome', 'Start', 'End', 'Strand', 'gene_id']]
     full_list = []
     list_longer_1000 = []
-    for chrom, start, end, strand, gene_id in annot.values:
+    for chrom, start, end, strand, gene_id in annot.values:                                                     #type:ignore
         if chrom in ["1", "2"]:
             full_list.append(gene_id)
             if end - start >= 1000:
@@ -57,7 +58,7 @@ def test_gene_dist(self):
 
 def test_regex():
     # regex_string = "^arabidopsis_(\\d+)_SSR_train_ssr_models_\\d+_\\d+\\.h5&"
-    regex_string = "^arabidopsis_1_SSR_train_ssr_models_\d+_\d+\.h5$"
+    regex_string = "^arabidopsis_1_SSR_train_ssr_models_\d+_\d+\.h5$"                                           #type:ignore
     regex = re.compile(regex_string)
     match = regex.match("arabidopsis_1_SSR_train_ssr_models_240816_183905.h5")
     if match: 
@@ -67,18 +68,43 @@ def test_regex():
         print("no match found")
 
 
+def test_predict_other():
+    data = pd.read_csv("example_predict_input.csv", sep=',', header=None,
+                    dtype={0: str, 1: str, 2: str, 3: str, 4: int, 5: str},
+                    names=['genome', 'gtf', 'tpm', 'output', 'counts'])
+
+    for genome_file_name, annotation_file_name, tpm_counts_file_name, output_name, num_chromosomes in data.values:
+        loaded_input_files = load_input_files(genome_file_name=genome_file_name, annotation_file_name=annotation_file_name, tpm_counts_file_name=tpm_counts_file_name)
+        genome = loaded_input_files["genome"]
+        annotation = loaded_input_files["annotation"]
+        tpms = loaded_input_files["tpms"]
+        extragenic = 1000
+        intragenic = 500
+        ignore_small_genes = "yes"
+        extracted_genes = extract_genes(genome=genome, annotation=annotation, extragenic=extragenic, intragenic=intragenic, ignore_small_genes=ignore_small_genes, tpms=tpms, target_chromosomes=())
+        results_dfs = []
+        for chrom in range(1, num_chromosomes + 1):
+            results, _ = predict_other(extragenic=extragenic, intragenic=intragenic, val_chromosome=str(chrom), output_name=output_name,
+                                            model_case="SSR", extracted_genes=extracted_genes)
+            results_dfs.append(results)
+        result = pd.concat(results_dfs)
+        only_preds = result.drop(["true_targets", "genes"], axis=1)
+        result["pred_probs"] = only_preds.mean(axis=1)
+        print(result.head())
+
+
 class TestDeepCRE(unittest.TestCase):
     
     def test_model_finding(self):
         results = find_newest_model_path(output_name="arabidopsis", model_case="SSR", model_path="test_folder/model_names")
-        for key, value in results.items():
+        for key in results:
             self.assertTrue(key in ["1", "2"])
         path_to_models = make_absolute_path("test_folder", "model_names", start_file=__file__)
         self.assertEqual(results["1"], os.path.join(path_to_models, "arabidopsis_1_SSR_train_ssr_models_240822_103323.h5"))
         self.assertEqual(results["2"], os.path.join(path_to_models, "arabidopsis_2_SSR_train_ssr_models_240822_105523.h5"))
-        
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
     # test_regex()
+    test_predict_other()

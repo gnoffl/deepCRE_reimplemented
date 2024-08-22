@@ -1,6 +1,6 @@
 import argparse
 import os
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 import numpy as np
 from tensorflow.keras.models import load_model #type:ignore
 import pandas as pd
@@ -32,9 +32,9 @@ def find_newest_model_path(output_name: str, model_case: str, val_chromosome: st
     # ^ and $ mark start and end of a string. \d singnifies any digit. \d+ means a sequence of digits with at least length 1
     # more detailed explanation at https://regex101.com/, put in "^ara_(\d+)_ssr_\d+_\d+\.h5$"
     if val_chromosome == "":
-        regex_string = f"^{output_name}_(.+)_{model_case}_train_ssr_models_\d+_\d+\.h5$"
+        regex_string = f"^{output_name}_(.+)_{model_case}_train_ssr_models_\d+_\d+\.h5$"                                                                    #type:ignore
     else:
-        regex_string = f"^{output_name}_{val_chromosome}_{model_case}_train_ssr_models_\d+_\d+\.h5$"
+        regex_string = f"^{output_name}_{val_chromosome}_{model_case}_train_ssr_models_\d+_\d+\.h5$"                                                        #type:ignore
     regex = re.compile(regex_string)
     candidate_models = [model for model in os.listdir(path_to_models)]
     fitting_models = {}
@@ -70,7 +70,7 @@ def predict_self(extragenic, intragenic, val_chromosome, output_name, model_case
     pred_probs = model.predict(x).ravel()
     return x, y, pred_probs, gene_ids, model
 
-def predict_other(extragenic, intragenic, val_chromosome, output_name, model_case, extracted_genes):
+def predict_other(extragenic, intragenic, val_chromosome, output_name, model_case, extracted_genes) -> Tuple[pd.DataFrame, Dict[str, Any]]:
 
     x, y, gene_ids = extracted_genes[str(val_chromosome)]
 
@@ -78,10 +78,15 @@ def predict_other(extragenic, intragenic, val_chromosome, output_name, model_cas
     x[:, extragenic:extragenic + 3, :] = 0                                                                                                  #type:ignore
     x[:, extragenic + (intragenic * 2) + 17:extragenic + (intragenic * 2) + 20, :] = 0                                                      #type:ignore
 
-    newest_model_path = find_newest_model_path(output_name=output_name, val_chromosome=val_chromosome, model_case=model_case)
-    model = load_model(newest_model_path)
-    pred_probs = model.predict(x).ravel()
-    return x, y, pred_probs, gene_ids, model
+    newest_model_paths = find_newest_model_path(output_name=output_name, model_case=model_case)
+    models = {os.path.basename(model_path): load_model(model_path) for chromosome, model_path in newest_model_paths.items()}
+
+
+    df_dict = {model_name: model.predict(x).ravel() for model_name, model in models.items()}
+    df_dict['true_targets'] = y
+    df_dict['genes'] = gene_ids
+    result_df = pd.DataFrame(df_dict)
+    return result_df, models
 
 
 def parse_args():

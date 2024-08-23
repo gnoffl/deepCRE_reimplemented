@@ -5,7 +5,7 @@ import unittest
 import pyranges as pr
 
 from train_ssr_models import extract_genes
-from utils import load_input_files, make_absolute_path
+from utils import load_input_files, make_absolute_path, get_time_stamp
 from deepcre_predict import find_newest_model_path, predict_other, predict_self
 
 def compare_lists(list1, list2) -> bool:
@@ -33,7 +33,7 @@ def test_compare_old_new():
         raise ValueError("DFs arent the same!")
     
 
-def test_gene_dist(self):
+def test_gene_dist():
     annotation_path = "gene_models/Arabidopsis_thaliana.TAIR10.52.gtf"
     annot = pr.read_gtf(f=annotation_path, as_df=True)
     annot = annot[annot['gene_biotype'] == 'protein_coding']
@@ -42,7 +42,7 @@ def test_gene_dist(self):
     full_list = []
     list_longer_1000 = []
     for chrom, start, end, strand, gene_id in annot.values:                                                     #type:ignore
-        if chrom in ["1", "2"]:
+        if chrom in ["2"]:
             full_list.append(gene_id)
             if end - start >= 1000:
                 list_longer_1000.append(gene_id)
@@ -50,6 +50,7 @@ def test_gene_dist(self):
     include_short = pd.read_csv("results/predictions/arabidopsis_deepcre_predict_240820_180424.csv", header=0)
     short_list = ignore_short["genes"].values
     long_list = include_short["genes"].values
+    print(len(list_longer_1000))
     if not compare_lists(short_list, list_longer_1000):
         raise ValueError("short lists arent equal!")
     if not compare_lists(long_list, full_list):
@@ -91,6 +92,24 @@ def test_predict_other():
         only_preds = result.drop(["true_targets", "genes"], axis=1)
         result["pred_probs"] = only_preds.mean(axis=1)
         print(result.head())
+        result.to_csv(f"results/predictions/arabidopsis_deepcre_predict_other_{get_time_stamp()}.csv")
+
+
+def compare_predict_other_self():
+    self_name = "arabidopsis_deepcre_predict_240820_175307.csv"
+    other_name = "arabidopsis_deepcre_predict_other_240823_105835.csv"
+    self_data = pd.read_csv(os.path.join("results", "predictions", self_name))
+    other_data = pd.read_csv(os.path.join("results", "predictions", other_name), index_col=0)
+    # chrom 1: 6078
+    # chrom 2: 3541
+    self_data_chrom_1 = self_data["pred_probs"].iloc[:6078]
+    self_data_chrom_2 = self_data["pred_probs"].iloc[6078:]
+    other_data_chrom_1 = other_data["arabidopsis_1_SSR_train_ssr_models_240816_183905.h5"].iloc[:6078]
+    other_data_chrom_2 = other_data["arabidopsis_2_SSR_train_ssr_models_240816_184026.h5"].iloc[6078:]
+    print((self_data_chrom_1 == other_data_chrom_1).all())
+    self_data_chrom_2.index = other_data_chrom_2.index
+    comparison_chrom_2 = (self_data_chrom_2 == other_data_chrom_2)
+    print((comparison_chrom_2).all())
 
 
 class TestDeepCRE(unittest.TestCase):
@@ -107,4 +126,6 @@ class TestDeepCRE(unittest.TestCase):
 if __name__ == "__main__":
     # unittest.main()
     # test_regex()
-    test_predict_other()
+    # test_predict_other()
+    compare_predict_other_self()
+    # test_gene_dist()

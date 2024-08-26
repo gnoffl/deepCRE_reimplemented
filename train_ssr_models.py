@@ -44,9 +44,9 @@ def extract_genes(genome, annotation, extragenic, intragenic, ignore_small_genes
             ])
         else:
             seq = np.concatenate([
-                terminator[::-1],
+                terminator[::-1, ::-1],
                 np.zeros(shape=(pad_size, 4)),
-                promoter[::-1]
+                promoter[::-1, ::-1]
             ])
 
         if seq.shape[0] == expected_final_size:
@@ -187,9 +187,9 @@ def extract_seq(genome, annot, tpm_targets, upstream, downstream, genes_picked, 
             ])
         else:
             seq = np.concatenate([
-                terminator[::-1],
+                terminator[::-1, ::-1],
                 np.zeros(shape=(pad_size, 4)),
-                promoter[::-1]
+                promoter[::-1, ::-1]
             ])
 
         with open(genes_picked, 'rb') as handle:
